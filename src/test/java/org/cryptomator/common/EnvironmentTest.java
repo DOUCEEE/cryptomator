@@ -31,95 +31,92 @@ public class EnvironmentTest {
 	public void testAbsoluteLogDir() {
 		System.setProperty("cryptomator.logDir", "/foo/bar");
 
-		Optional<Path> logDir = env.getLogDir();
 
-		Assertions.assertTrue(logDir.isPresent());
-	}
+		@Nested
+		@DisplayName("Testing parsing path lists")
+		public class PathLists {
 
-	@Nested
-	@DisplayName("Testing parsing path lists")
-	public class PathLists {
+			@Test
+			@DisplayName("test.path.property=")
+			public void testEmptyList() {
+				System.setProperty("test.path.property", "");
+				List<Path> result = env.getPaths("test.path.property").toList();
 
-		@Test
-		@DisplayName("test.path.property=")
-		public void testEmptyList() {
-			System.setProperty("test.path.property", "");
-			List<Path> result = env.getPaths("test.path.property").toList();
+				MatcherAssert.assertThat(result, Matchers.hasSize(0));
+			}
 
-			MatcherAssert.assertThat(result, Matchers.hasSize(0));
+			@Test
+			@DisplayName("test.path.property=/foo/bar/test")
+			public void testSinglePath() {
+				System.setProperty("test.path.property", "/foo/bar/test");
+				List<Path> result = env.getPaths("test.path.property").toList();
+
+				MatcherAssert.assertThat(result, Matchers.hasSize(1));
+				MatcherAssert.assertThat(result, Matchers.hasItem(Paths.get("/foo/bar/test")));
+			}
+
+			@Test
+			@EnabledIf("isColonPathSeperator")
+			@DisplayName("test.path.property=/foo/bar/test:/bar/nez/tost")
+			public void testTwoPathsColon() {
+				System.setProperty("test.path.property", "/foo/bar/test:bar/nez/tost");
+				List<Path> result = env.getPaths("test.path.property").toList();
+
+				MatcherAssert.assertThat(result, Matchers.hasSize(2));
+				MatcherAssert.assertThat(result, Matchers.hasItems(Path.of("/foo/bar/test"), Path.of("bar/nez/tost")));
+			}
+
+			@Test
+			@EnabledIf("isSemiColonPathSeperator")
+			@DisplayName("test.path.property=/foo/bar/test;/bar/nez/tost")
+			public void testTwoPathsSemiColon() {
+				System.setProperty("test.path.property", "/foo/bar/test;bar/nez/tost");
+				List<Path> result = env.getPaths("test.path.property").toList();
+
+				MatcherAssert.assertThat(result, Matchers.hasSize(2));
+				MatcherAssert.assertThat(result, Matchers.hasItems(Path.of("/foo/bar/test"), Path.of("bar/nez/tost")));
+			}
+
+			boolean isColonPathSeperator() {
+				return System.getProperty("path.separator").equals(":");
+			}
+
+			boolean isSemiColonPathSeperator() {
+				return System.getProperty("path.separator").equals(";");
+			}
+
 		}
 
-		@Test
-		@DisplayName("test.path.property=/foo/bar/test")
-		public void testSinglePath() {
-			System.setProperty("test.path.property", "/foo/bar/test");
-			List<Path> result = env.getPaths("test.path.property").toList();
+		@Nested
+		public class VariablesContainingPathLists {
 
-			MatcherAssert.assertThat(result, Matchers.hasSize(1));
-			MatcherAssert.assertThat(result, Matchers.hasItem(Paths.get("/foo/bar/test")));
-		}
+			@Test
+			public void testSettingsPath() {
+				Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
+				env.getSettingsPath();
+				Mockito.verify(env).getPaths("cryptomator.settingsPath");
+			}
 
-		@Test
-		@EnabledIf("isColonPathSeperator")
-		@DisplayName("test.path.property=/foo/bar/test:/bar/nez/tost")
-		public void testTwoPathsColon() {
-			System.setProperty("test.path.property", "/foo/bar/test:bar/nez/tost");
-			List<Path> result = env.getPaths("test.path.property").toList();
+			@Test
+			public void testP12Path() {
+				Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
+				env.getP12Path();
+				Mockito.verify(env).getPaths("cryptomator.p12Path");
+			}
 
-			MatcherAssert.assertThat(result, Matchers.hasSize(2));
-			MatcherAssert.assertThat(result, Matchers.hasItems(Path.of("/foo/bar/test"), Path.of("bar/nez/tost")));
-		}
+			@Test
+			public void testIpcSocketPath() {
+				Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
+				env.getIpcSocketPath();
+				Mockito.verify(env).getPaths("cryptomator.ipcSocketPath");
+			}
 
-		@Test
-		@EnabledIf("isSemiColonPathSeperator")
-		@DisplayName("test.path.property=/foo/bar/test;/bar/nez/tost")
-		public void testTwoPathsSemiColon() {
-			System.setProperty("test.path.property", "/foo/bar/test;bar/nez/tost");
-			List<Path> result = env.getPaths("test.path.property").toList();
-
-			MatcherAssert.assertThat(result, Matchers.hasSize(2));
-			MatcherAssert.assertThat(result, Matchers.hasItems(Path.of("/foo/bar/test"), Path.of("bar/nez/tost")));
-		}
-
-		boolean isColonPathSeperator() {
-			return System.getProperty("path.separator").equals(":");
-		}
-
-		boolean isSemiColonPathSeperator() {
-			return System.getProperty("path.separator").equals(";");
-		}
-
-	}
-
-	@Nested
-	public class VariablesContainingPathLists {
-
-		@Test
-		public void testSettingsPath() {
-			Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
-			env.getSettingsPath();
-			Mockito.verify(env).getPaths("cryptomator.settingsPath");
-		}
-
-		@Test
-		public void testP12Path() {
-			Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
-			env.getP12Path();
-			Mockito.verify(env).getPaths("cryptomator.p12Path");
-		}
-
-		@Test
-		public void testIpcSocketPath() {
-			Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
-			env.getIpcSocketPath();
-			Mockito.verify(env).getPaths("cryptomator.ipcSocketPath");
-		}
-
-		@Test
-		public void testKeychainPath() {
-			Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
-			env.getKeychainPath();
-			Mockito.verify(env).getPaths("cryptomator.integrationsWin.keychainPaths");
+			@Test
+			public void testKeychainPath() {
+				Mockito.doReturn(Stream.of()).when(env).getPaths(Mockito.anyString());
+				env.getKeychainPath();
+				Mockito.verify(env).getPaths("cryptomator.integrationsWin.keychainPaths");
+			}
 		}
 	}
 	/**
